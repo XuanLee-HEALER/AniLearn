@@ -4,14 +4,22 @@ import { LearningPlan, LearningPlanMetadata } from '../types';
 const INDEX_KEY = 'anilearn_index';
 const PLAN_PREFIX = 'anilearn_plan_';
 
-// Save the full plan (updates both detail and index)
-export const savePlan = (plan: LearningPlan) => {
+/**
+ * Storage Service Adapter
+ * Designed to be easily swapped with @capacitor/filesystem or @capacitor/preferences
+ * Currently uses localStorage (wrapped in Promises) for Web Preview.
+ */
+
+// Helper to simulate async delay (optional, for realism)
+const asyncOp = <T>(data: T): Promise<T> => Promise.resolve(data);
+
+export const savePlan = async (plan: LearningPlan): Promise<void> => {
     try {
         // 1. Save the full content
         localStorage.setItem(`${PLAN_PREFIX}${plan.id}`, JSON.stringify(plan));
 
         // 2. Update the index
-        const index = getPlanIndex();
+        const index = await getPlanIndex();
         const existingIdx = index.findIndex(p => p.id === plan.id);
         
         // Calculate progress
@@ -36,33 +44,35 @@ export const savePlan = (plan: LearningPlan) => {
 
         localStorage.setItem(INDEX_KEY, JSON.stringify(index));
     } catch (e) {
-        console.error("Storage failed", e);
+        console.error("Storage save failed", e);
+        throw e;
     }
 };
 
-export const getPlanIndex = (): LearningPlanMetadata[] => {
+export const getPlanIndex = async (): Promise<LearningPlanMetadata[]> => {
     try {
         const data = localStorage.getItem(INDEX_KEY);
-        return data ? JSON.parse(data) : [];
+        return asyncOp(data ? JSON.parse(data) : []);
     } catch (e) {
         return [];
     }
 };
 
-export const loadPlan = (id: string): LearningPlan | null => {
+export const loadPlan = async (id: string): Promise<LearningPlan | null> => {
     try {
         const data = localStorage.getItem(`${PLAN_PREFIX}${id}`);
-        return data ? JSON.parse(data) : null;
+        return asyncOp(data ? JSON.parse(data) : null);
     } catch (e) {
         return null;
     }
 };
 
-export const deletePlan = (id: string) => {
+export const deletePlan = async (id: string): Promise<void> => {
     try {
         localStorage.removeItem(`${PLAN_PREFIX}${id}`);
-        const index = getPlanIndex().filter(p => p.id !== id);
-        localStorage.setItem(INDEX_KEY, JSON.stringify(index));
+        const index = await getPlanIndex();
+        const newIndex = index.filter(p => p.id !== id);
+        localStorage.setItem(INDEX_KEY, JSON.stringify(newIndex));
     } catch (e) {
         console.error("Delete failed", e);
     }

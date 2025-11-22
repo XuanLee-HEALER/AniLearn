@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { TopBar } from './components/TopBar';
 import { BottomNav, NavDrawer } from './components/Navigation';
@@ -28,22 +29,23 @@ const AppContent: React.FC = () => {
 
   // Initialization
   useEffect(() => {
-    setPlanList(getPlanIndex());
-    // We no longer load the plan immediately here to show Intro if no plan selected? 
-    // Or we can load first one. Let's try to load the first one if available.
-    const index = getPlanIndex();
-    if (index.length > 0) {
-        const latest = loadPlan(index[0].id);
-        if (latest) setActivePlan(latest);
-    }
+    const initData = async () => {
+        const index = await getPlanIndex();
+        setPlanList(index);
+        if (index.length > 0) {
+            const latest = await loadPlan(index[0].id);
+            if (latest) setActivePlan(latest);
+        }
+    };
+    initData();
   }, []);
 
   const handleCreatePlan = async (topic: string, context: string) => {
     setIsCreating(true);
     try {
       const newPlan = await generateDetailedPlan(topic, context, 14, language);
-      savePlan(newPlan);
-      setPlanList(getPlanIndex());
+      await savePlan(newPlan);
+      setPlanList(await getPlanIndex());
       setActivePlan(newPlan);
       setShowCreateModal(false);
       setView('daily');
@@ -55,25 +57,25 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleSelectPlan = (id: string) => {
-      const plan = loadPlan(id);
+  const handleSelectPlan = async (id: string) => {
+      const plan = await loadPlan(id);
       if (plan) {
           setActivePlan(plan);
           setView('daily');
       }
   };
 
-  const updateDay = (updatedDay: LearningDay) => {
+  const updateDay = async (updatedDay: LearningDay) => {
     if (!activePlan) return;
     const newDays = [...activePlan.days];
     newDays[updatedDay.dayNumber - 1] = updatedDay;
     const updatedPlan = { ...activePlan, days: newDays };
     setActivePlan(updatedPlan);
-    savePlan(updatedPlan);
-    setPlanList(getPlanIndex()); 
+    await savePlan(updatedPlan);
+    setPlanList(await getPlanIndex()); 
   };
 
-  const completeDay = () => {
+  const completeDay = async () => {
     if (!activePlan) return;
     const currentDayIdx = activePlan.days.findIndex(d => d.dayNumber === activePlan.days.find(dd => dd.status === LearningStatus.PENDING)?.dayNumber);
     if (currentDayIdx === -1) return;
@@ -91,8 +93,8 @@ const AppContent: React.FC = () => {
     }
     const updatedPlan = { ...activePlan, days: newDays };
     setActivePlan(updatedPlan);
-    savePlan(updatedPlan);
-    setPlanList(getPlanIndex());
+    await savePlan(updatedPlan);
+    setPlanList(await getPlanIndex());
   };
 
   const getCurrentDay = () => {

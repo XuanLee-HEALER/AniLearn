@@ -1,11 +1,12 @@
+
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { LearningDay, Task } from '../types';
-import { AnimeCard } from './AnimeCard';
-import { CheckCircle2, Circle, ExternalLink, PlayCircle, Bot, BookOpen, Clock, Sparkles, PenLine, Eye, ChevronDown, ChevronUp } from 'lucide-react';
-import { generateDailyRecap, validateUserAnswer } from '../services/geminiService';
+import { LearningDay, Task, DailyRecap } from '../types';
+import { CheckCircle2, Circle, ExternalLink, PlayCircle, Bot, BookOpen, Clock, Sparkles, PenLine, Eye, ChevronDown, ChevronUp, ArrowRight, ThumbsUp, XCircle } from 'lucide-react';
+import { generateDailyRecap } from '../services/geminiService';
 import { useConfig } from '../contexts/ConfigContext';
 import { TRANSLATIONS } from '../constants';
+import { AnimeCard } from './AnimeCard';
 
 interface DailyViewProps {
   day: LearningDay;
@@ -13,38 +14,34 @@ interface DailyViewProps {
   onCompleteDay: () => void;
 }
 
+// --- Task Item with Self-Check Logic ---
 const TaskItem: React.FC<{ task: Task, onUpdate: (t: Task) => void }> = ({ task, onUpdate }) => {
-    const [checking, setChecking] = useState(false);
+    const [showAnswer, setShowAnswer] = useState(false);
     const [localAnswer, setLocalAnswer] = useState(task.userAnswer || '');
     const [expanded, setExpanded] = useState(!task.isCompleted);
     const { language } = useConfig();
     const t = TRANSLATIONS[language];
 
-    const handleCheck = async () => {
-        if (!localAnswer.trim() || !task.verificationQuestion) return;
-        setChecking(true);
-        const result = await validateUserAnswer(task.verificationQuestion, localAnswer, language);
+    const handleSelfCheck = (isCorrect: boolean) => {
         onUpdate({
             ...task,
             userAnswer: localAnswer,
-            aiFeedback: result.feedback,
-            isVerified: result.correct,
-            isCompleted: result.correct
+            isVerified: true,
+            isCompleted: isCorrect
         });
-        setChecking(false);
-        if(result.correct) setExpanded(false);
+        if(isCorrect) setExpanded(false);
     };
 
     return (
-        <div className={`mb-4 transition-all duration-500 ${task.isCompleted ? 'opacity-80' : 'opacity-100'}`}>
+        <div className={`mb-4 transition-all duration-500 ${task.isCompleted ? 'opacity-70' : 'opacity-100'}`}>
             <div 
                 className={`rounded-2xl p-4 transition-colors border-2 ${task.isCompleted ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent' : 'bg-white dark:bg-slate-800 border-pink-100 dark:border-pink-900'}`}
                 onClick={() => setExpanded(!expanded)}
             >
                 <div className="flex items-start gap-4 cursor-pointer">
-                    <button onClick={(e) => { e.stopPropagation(); onUpdate({...task, isCompleted: !task.isCompleted}); }}>
+                    <div className={`mt-0.5`}>
                         {task.isCompleted ? <CheckCircle2 className="text-green-500" size={24}/> : <Circle className="text-pink-400" size={24}/>}
-                    </button>
+                    </div>
                     <div className="flex-1">
                         <h4 className={`font-bold text-base ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-slate-100'}`}>{task.description}</h4>
                         <div className="flex items-center gap-2 mt-1">
@@ -72,38 +69,52 @@ const TaskItem: React.FC<{ task: Task, onUpdate: (t: Task) => void }> = ({ task,
                         </div>
                     )}
 
-                    {/* Interactive Question */}
-                    {task.verificationQuestion && (
+                    {/* Self Check Interaction */}
+                    {task.verificationQuestion && !task.isCompleted && (
                         <div className="bg-pink-50 dark:bg-pink-900/10 p-4 rounded-2xl">
-                            <p className="text-sm font-medium text-pink-600 dark:text-pink-300 mb-3 flex items-center gap-2">
+                            <p className="text-sm font-medium text-pink-600 dark:text-pink-300 mb-2 flex items-center gap-2">
                                 <Bot size={16}/> {t.senseiAsks}
                             </p>
-                            <p className="text-sm text-slate-700 dark:text-slate-300 mb-3 italic">"{task.verificationQuestion}"</p>
+                            <p className="text-sm text-slate-700 dark:text-slate-300 mb-4 italic font-serif">"{task.verificationQuestion}"</p>
                             
-                            {!task.isVerified ? (
+                            {!showAnswer ? (
                                 <div className="space-y-3">
                                     <textarea 
                                         className="w-full text-base p-3 rounded-xl border border-pink-200 dark:border-pink-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-pink-400 outline-none"
                                         placeholder={t.typeAnswer}
-                                        rows={3}
+                                        rows={2}
                                         value={localAnswer}
                                         onChange={(e) => setLocalAnswer(e.target.value)}
                                     />
                                     <button 
-                                        onClick={handleCheck}
-                                        disabled={checking || !localAnswer}
-                                        className="w-full h-10 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                        onClick={() => setShowAnswer(true)}
+                                        disabled={!localAnswer}
+                                        className="w-full h-10 bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {checking ? <Sparkles className="animate-spin" size={16}/> : <Sparkles size={16}/>}
-                                        {t.aiCheck}
+                                        <Eye size={16}/> Check Answer
                                     </button>
                                 </div>
                             ) : (
-                                <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-xl text-sm">
-                                    <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-bold mb-1">
-                                        <CheckCircle2 size={16}/> {t.verified}
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Reference Answer</span>
+                                        <p className="text-sm text-slate-800 dark:text-slate-200">{task.answerKey}</p>
                                     </div>
-                                    <p className="text-slate-600 dark:text-slate-300">{task.aiFeedback}</p>
+                                    
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleSelfCheck(false)}
+                                            className="flex-1 h-10 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-300 dark:hover:bg-slate-600"
+                                        >
+                                            <XCircle size={16}/> Missed it
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSelfCheck(true)}
+                                            className="flex-1 h-10 bg-green-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-600"
+                                        >
+                                            <ThumbsUp size={16}/> Got it!
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -114,9 +125,11 @@ const TaskItem: React.FC<{ task: Task, onUpdate: (t: Task) => void }> = ({ task,
     )
 }
 
+// --- Main View ---
 export const DailyView: React.FC<DailyViewProps> = ({ day, onUpdateDay, onCompleteDay }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [recapData, setRecapData] = useState<DailyRecap | null>(null);
   const { language } = useConfig();
   const t = TRANSLATIONS[language];
 
@@ -129,15 +142,18 @@ export const DailyView: React.FC<DailyViewProps> = ({ day, onUpdateDay, onComple
 
   const handleFinishDay = async () => {
     setIsSubmitting(true);
-    await generateDailyRecap(day, language); // Fire and forget for now, or show toast
-    setTimeout(() => {
-        onCompleteDay();
-        setIsSubmitting(false);
-    }, 1500);
+    const recap = await generateDailyRecap(day, language);
+    setRecapData(recap);
+    setIsSubmitting(false);
+  };
+
+  const handleCloseRecap = () => {
+      setRecapData(null);
+      onCompleteDay();
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pb-24 relative">
       {/* Hero / Header */}
       <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -199,18 +215,64 @@ export const DailyView: React.FC<DailyViewProps> = ({ day, onUpdateDay, onComple
       </div>
 
       {/* FAB / Action Button */}
-      <div className="h-12"></div> {/* Spacer */}
       <button
         disabled={progress < 100 || isSubmitting}
         onClick={handleFinishDay}
-        className={`fixed bottom-24 right-4 left-4 md:left-auto md:w-64 h-14 rounded-full shadow-xl z-30 font-bold text-lg flex items-center justify-center gap-2 transition-all transform ${progress === 100 ? 'bg-pink-500 text-white translate-y-0' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 translate-y-10 opacity-0 pointer-events-none'}`}
+        className={`fixed bottom-24 right-4 h-14 px-6 rounded-2xl shadow-xl z-30 font-bold text-lg flex items-center justify-center gap-2 transition-all transform ${progress === 100 ? 'bg-pink-500 text-white scale-100' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 scale-90 opacity-50 pointer-events-none'}`}
       >
         {isSubmitting ? (
-            <><Sparkles className="animate-spin"/> {t.syncing}</>
+            <><Sparkles className="animate-spin"/> {t.calibrating}</>
         ) : (
             <><CheckCircle2/> {t.completeDay}</>
         )}
       </button>
+
+      {/* Recap Dialog */}
+      {recapData && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+              <AnimeCard className="w-full max-w-md max-h-[80vh] overflow-y-auto animate-slide-up">
+                  <div className="text-center mb-6">
+                      <div className="inline-block p-3 bg-pink-100 dark:bg-pink-900/50 rounded-full mb-4">
+                          <Sparkles className="text-pink-500" size={32}/>
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white">Day Complete!</h2>
+                  </div>
+                  
+                  <div className="space-y-6">
+                      <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Summary</h4>
+                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{recapData.summary}</p>
+                      </div>
+
+                      <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase mb-3">Next Steps / Extensions</h4>
+                          <div className="space-y-2">
+                              {recapData.extensions.map((ext, idx) => (
+                                  <a key={idx} href={ext.url.startsWith('http') ? ext.url : `https://www.google.com/search?q=${encodeURIComponent(ext.url)}`} 
+                                     target="_blank" 
+                                     rel="noopener noreferrer"
+                                     className="block p-3 bg-white dark:bg-slate-900 border border-pink-100 dark:border-pink-900 rounded-xl hover:shadow-md transition-shadow"
+                                  >
+                                      <div className="flex items-center justify-between mb-1">
+                                          <span className="font-bold text-pink-600 dark:text-pink-400 text-sm">{ext.title}</span>
+                                          <ExternalLink size={12} className="text-slate-400"/>
+                                      </div>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{ext.description}</p>
+                                  </a>
+                              ))}
+                          </div>
+                      </div>
+                      
+                      <button 
+                          onClick={handleCloseRecap}
+                          className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl"
+                      >
+                          Continue Journey
+                      </button>
+                  </div>
+              </AnimeCard>
+          </div>
+      )}
     </div>
   );
 };

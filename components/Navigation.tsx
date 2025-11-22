@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LayoutDashboard, CalendarCheck, Map, X, Moon, Sun, Languages, Plus, FolderOpen, ChevronRight } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';

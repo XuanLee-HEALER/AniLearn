@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { LearningDay, LearningStatus, Task, Language, LearningPlan } from "../types";
+import { LearningDay, LearningStatus, Task, Language, LearningPlan, DailyRecap } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -20,9 +20,10 @@ const taskSchema: Schema = {
     isCompleted: { type: Type.BOOLEAN },
     estimatedMinutes: { type: Type.INTEGER },
     links: { type: Type.ARRAY, items: linkSchema },
-    verificationQuestion: { type: Type.STRING, description: "A specific technical question to test the user's understanding of this task." }
+    verificationQuestion: { type: Type.STRING, description: "A specific technical question to test the user's understanding." },
+    answerKey: { type: Type.STRING, description: "The concise correct answer to the verification question for user self-checking." }
   },
-  required: ["id", "description", "estimatedMinutes", "verificationQuestion"],
+  required: ["id", "description", "estimatedMinutes", "verificationQuestion", "answerKey"],
 };
 
 const daySchema: Schema = {
@@ -42,6 +43,25 @@ const daySchema: Schema = {
 const planSchema: Schema = {
   type: Type.ARRAY,
   items: daySchema,
+};
+
+// Recap Schema
+const extensionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING },
+    description: { type: Type.STRING },
+    url: { type: Type.STRING, description: "A search query URL or specific doc URL" }
+  }
+};
+
+const recapSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: { type: Type.STRING, description: "A summary of what was learned today." },
+    extensions: { type: Type.ARRAY, items: extensionSchema, description: "2-3 advanced topics or resources related to today's learning." }
+  },
+  required: ["summary", "extensions"]
 };
 
 export const generateDetailedPlan = async (
@@ -64,8 +84,9 @@ export const generateDetailedPlan = async (
       
       CRITICAL INSTRUCTION: 
       For each task, provide:
-      1. A specific "verificationQuestion" that the user must answer to prove they learned it.
-      2. Useful "links" (use real, high-quality documentation URLs or tutorial search terms).
+      1. A specific "verificationQuestion".
+      2. A concise "answerKey" so the user can check themselves.
+      3. Useful "links".
       
       Output strictly valid JSON matching the schema.
     `;
@@ -76,7 +97,7 @@ export const generateDetailedPlan = async (
       config: {
         responseMimeType: 'application/json',
         responseSchema: planSchema,
-        systemInstruction: `You are an expert tutor and anime character. ${langInstruction}`,
+        systemInstruction: `You are an expert tutor. ${langInstruction}`,
       },
     });
 
@@ -93,7 +114,6 @@ export const generateDetailedPlan = async (
         ...t, 
         isCompleted: false,
         userAnswer: '',
-        aiFeedback: '',
         isVerified: false
       }))
     }));
@@ -115,49 +135,37 @@ export const generateDetailedPlan = async (
   }
 };
 
-export const generateDailyRecap = async (day: LearningDay, language: Language = 'en'): Promise<string> => {
+export const generateDailyRecap = async (day: LearningDay, language: Language = 'en'): Promise<DailyRecap> => {
     try {
         const langInstruction = language === 'zh' ? "Respond in Chinese (Simplified)." : "Respond in English.";
+        const prompt = `
+          The user completed studying: ${day.topic}.
+          Original Summary: ${day.summary}
+          
+          1. Write a short, encouraging summary of what they accomplished.
+          2. Suggest 2-3 extension topics/resources (links or search terms) for them to go deeper (e.g. "Advanced usage of X").
+          
+          ${langInstruction}
+        `;
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `The user just finished studying: ${day.topic}. The summary was: ${day.summary}. 
-            Give them a short, 2-sentence enthusiastic anime-style congratulation. ${langInstruction}`,
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: recapSchema
+            }
         });
-        return response.text || "Great job! Keep going!";
-    } catch (e) {
-        return "Mission Complete! You are getting stronger!";
-    }
-};
-
-export const validateUserAnswer = async (question: string, answer: string, language: Language = 'en'): Promise<{correct: boolean, feedback: string}> => {
-  try {
-    const langInstruction = language === 'zh' ? "Respond in Chinese (Simplified)." : "Respond in English.";
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `
-        Question: ${question}
-        User Answer: ${answer}
         
-        Act as a strict but encouraging anime tutor.
-        1. Determine if the answer is basically correct.
-        2. Provide short feedback (max 2 sentences).
-        ${langInstruction}
-      `,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            correct: { type: Type.BOOLEAN },
-            feedback: { type: Type.STRING }
-          }
-        }
-      }
-    });
-    
-    const result = JSON.parse(response.text);
-    return result;
-  } catch (e) {
-    return { correct: true, feedback: "I couldn't verify that right now, but I trust you!" };
-  }
+        const text = response.text;
+        if(!text) throw new Error("No recap generated");
+        return JSON.parse(text) as DailyRecap;
+
+    } catch (e) {
+        console.error(e);
+        return {
+            summary: "Great job completing today's tasks! Keep moving forward!",
+            extensions: []
+        };
+    }
 };
