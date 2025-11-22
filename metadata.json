@@ -1,0 +1,5 @@
+{
+  "name": "AniLearn: Swift Journey",
+  "description": "An anime-themed, AI-powered learning companion for mastering Swift and SwiftUI. Tracks daily progress, generates personalized schedules, and visualizes your journey.",
+  "requestFramePermissions": []
+}
