@@ -28,7 +28,7 @@ export const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ onClose, onCre
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       {/* Constrained max-height and flex layout for internal scrolling */}
-      <AnimeCard className="w-full max-w-lg max-h-[85vh] relative flex flex-col" variant="solid">
+      <AnimeCard className="w-full max-w-lg max-h-[85vh] relative flex flex-col" variant="filled">
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-pink-500 z-20">
           <X size={24} />
         </button>

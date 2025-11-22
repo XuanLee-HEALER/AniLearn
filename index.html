@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#fce7f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
     <title>AniLearn: Swift Journey</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,6 +15,18 @@
             animation: {
               'spin-slow': 'spin 3s linear infinite',
               'bounce-slow': 'bounce 2s infinite',
+              'fade-out': 'fadeOut 0.5s ease-in-out forwards',
+              'slide-up': 'slideUp 0.5s ease-out forwards',
+            },
+            keyframes: {
+              fadeOut: {
+                '0%': { opacity: '1' },
+                '100%': { opacity: '0', visibility: 'hidden' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
             }
           }
         }
@@ -24,16 +38,18 @@
         font-family: 'Nunito', sans-serif;
         margin: 0;
         overflow-x: hidden;
+        -webkit-tap-highlight-color: transparent;
       }
       h1, h2, h3, h4, h5, h6 {
         font-family: 'Fredoka', sans-serif;
       }
-      /* Custom Scrollbar */
+      /* Custom Scrollbar - thinner for mobile */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 4px;
+        height: 4px;
       }
       ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
         background: #f472b6;
@@ -83,13 +99,13 @@
     <script>
       // Simple script to generate static sakura petals
       const container = document.getElementById('sakura-container');
-      for(let i=0; i<20; i++) {
+      for(let i=0; i<15; i++) {
         const petal = document.createElement('div');
         petal.classList.add('sakura');
         petal.style.left = Math.random() * 100 + 'vw';
         petal.style.width = (Math.random() * 10 + 5) + 'px';
         petal.style.height = petal.style.width;
-        petal.style.animationDuration = (Math.random() * 5 + 5) + 's';
+        petal.style.animationDuration = (Math.random() * 5 + 8) + 's';
         petal.style.animationDelay = (Math.random() * 5) + 's';
         container.appendChild(petal);
       }

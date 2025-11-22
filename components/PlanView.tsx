@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { LearningDay, LearningStatus } from '../types';
-import { AnimeCard } from './AnimeCard';
-import { Lock, CheckCircle2, CircleDashed } from 'lucide-react';
+import { Lock, CheckCircle2, PlayCircle } from 'lucide-react';
 import { useConfig } from '../contexts/ConfigContext';
 import { TRANSLATIONS } from '../constants';
 
@@ -15,51 +13,39 @@ export const PlanView: React.FC<PlanViewProps> = ({ days }) => {
   const t = TRANSLATIONS[language];
 
   return (
-    <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10">
-            <h1 className="text-4xl font-black text-white drop-shadow-md mb-2">{t.masterPlan}</h1>
-            <p className="text-white/90 font-medium bg-black/20 inline-block px-4 py-1 rounded-full backdrop-blur-sm">
-                {t.roadToMastery}
-            </p>
+    <div className="space-y-4 pb-6">
+        <div className="text-center py-4">
+             <h2 className="text-2xl font-black text-slate-800 dark:text-white">{t.roadToMastery}</h2>
+             <p className="text-slate-500 text-sm">{days.length} {t.missions} Total</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="relative pl-4 space-y-8 before:absolute before:left-[27px] before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
             {days.map((day) => {
                 const isLocked = day.status === LearningStatus.LOCKED;
                 const isCompleted = day.status === LearningStatus.COMPLETED;
                 const isCurrent = day.status === LearningStatus.PENDING;
 
                 return (
-                    <AnimeCard 
-                        key={day.dayNumber} 
-                        className={`
-                            transition-transform hover:-translate-y-1
-                            ${isCurrent ? 'border-pink-400 ring-4 ring-pink-200 dark:ring-pink-800' : ''}
-                            ${isLocked ? 'opacity-70 grayscale' : ''}
-                        `}
-                    >
-                        <div className="flex justify-between items-start mb-3">
-                            <span className={`
-                                text-xs font-bold px-2 py-1 rounded-md
-                                ${isCompleted ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300' : isCurrent ? 'bg-pink-100 dark:bg-pink-900 text-pink-600 dark:text-pink-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}
-                            `}>
-                                {t.day} {day.dayNumber}
-                            </span>
-                            {isLocked && <Lock size={16} className="text-slate-400" />}
-                            {isCompleted && <CheckCircle2 size={20} className="text-green-500" />}
-                            {isCurrent && <CircleDashed size={20} className="text-pink-500 animate-spin-slow" />}
+                    <div key={day.dayNumber} className={`relative pl-8 transition-opacity ${isLocked ? 'opacity-60' : 'opacity-100'}`}>
+                        {/* Timeline Dot */}
+                        <div className={`absolute left-0 top-1 w-6 h-6 rounded-full border-4 flex items-center justify-center bg-white dark:bg-slate-900 z-10 ${isCompleted ? 'border-green-500' : isCurrent ? 'border-pink-500' : 'border-slate-300 dark:border-slate-700'}`}>
+                            {isCompleted && <div className="w-2 h-2 bg-green-500 rounded-full" />}
+                            {isCurrent && <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse" />}
                         </div>
-                        
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2 leading-tight">{day.topic}</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3">{day.summary}</p>
-                        
-                        <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <span className="text-xs text-slate-400">{day.tasks.length} {t.missions}</span>
-                            {isCurrent && (
-                                <span className="text-xs font-bold text-pink-500">{t.inProgress}</span>
-                            )}
+
+                        <div className={`p-5 rounded-[24px] ${isCurrent ? 'bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-900' : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800'}`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <span className={`text-xs font-bold px-2 py-1 rounded-md ${isCurrent ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                    {t.day} {day.dayNumber}
+                                </span>
+                                {isLocked && <Lock size={14} className="text-slate-400"/>}
+                                {isCompleted && <CheckCircle2 size={18} className="text-green-500"/>}
+                                {isCurrent && <PlayCircle size={18} className="text-pink-500"/>}
+                            </div>
+                            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg leading-tight mb-1">{day.topic}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{day.summary}</p>
                         </div>
-                    </AnimeCard>
+                    </div>
                 );
             })}
         </div>
